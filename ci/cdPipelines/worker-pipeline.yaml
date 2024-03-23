@@ -1,0 +1,53 @@
+trigger:
+  paths:
+    include:
+      - worker
+    
+resources:
+  - repo: self
+
+variables:
+  
+  imageRepository: 'dockersamples/examplevotingapp_worker'  
+  dockerfilePath: './vote'  
+  tag: '$(Build.BuildId)'  
+
+pool:
+  name: 'mypool'
+
+stages:
+  - stage: Build
+    displayName: Build stage
+    jobs:
+    - job: Build
+      displayName: Build
+      steps:
+        - task: Docker@2
+          inputs:
+            containerRegistry: 'DockerHub'
+            repository: '$(imageRepository)'
+            command: 'build'
+            Dockerfile: 'worker/Dockerfile'
+            tags: '$(tag)'
+  - stage: Push
+    displayName: Push stage
+    jobs:
+    - job: Push
+      displayName: Push
+      steps:
+        - task: Docker@2
+          inputs:
+            containerRegistry: 'DockerHub'
+            repository: '$(imageRepository)'
+            command: 'push'
+            tags: '$(tag)'
+  - stage: Update
+    displayName: Update stage
+    jobs:
+    - job: Update
+      displayName: Update k8s manifests
+      steps:
+      - task: ShellScript@2
+        inputs:
+          scriptPath: './updateManifests/update-k8s-manifests.sh'
+          args: 'result $(tag)'
